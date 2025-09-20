@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Çöçi AI – Ücretsiz Tarayıcı-İçi Sohbet</title>
+  <meta name="description" content="Çöçi AI, tamamen ücretsiz ve sunucusuz. Yapay zeka modelini tarayıcınızda çalıştırır (WebGPU)." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Ccircle cx='128' cy='128' r='120' fill='%23e74c3c'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-family='system-ui,Segoe UI,Roboto' font-size='120' fill='white'%3EÇ%3C/text%3E%3C/svg%3E" />
+  <!-- Ağ hızını iyileştirmek için -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://esm.run" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://huggingface.co" crossorigin>
+  <style>
+    :root{ --bg:#0b0d10;--panel:#12161b;--muted:#8892a6;--text:#eef2ff;--accent:#e74c3c;--accent-2:#f39c12; --radius:18px;--radius-sm:12px;--shadow:0 10px 30px rgba(0,0,0,.35)}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:radial-gradient(1200px 800px at 80% -20%,rgba(231,76,60,.12),transparent 60%),radial-gradient(1200px 800px at 20% 120%,rgba(243,156,18,.12),transparent 60%),var(--bg);color:var(--text)}
+    .wrap{display:grid;grid-template-rows:auto 1fr auto;min-height:100%}
+    header{position:sticky;top:0;z-index:5;backdrop-filter:saturate(140%) blur(8px);background:linear-gradient(to bottom,rgba(11,13,16,.9),rgba(11,13,16,.6));border-bottom:1px solid #1b2330}
+    .bar{max-width:980px;margin:auto;display:flex;gap:16px;align-items:center;padding:16px}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-badge{width:36px;height:36px;border-radius:50%;background:conic-gradient(from 190deg at 50% 50%,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:var(--shadow)}
+    .logo-badge span{font-weight:800;color:#fff}
+    h1{font-size:18px;margin:0}.grow{flex:1}
+    select,button{border:1px solid #283245;background:#0f1318;color:var(--text);border-radius:10px;padding:10px 12px}
+    button{cursor:pointer} button.primary{background:linear-gradient(135deg,var(--accent),#ff6b4a);border:none}
+    main{max-width:980px;margin:18px auto;padding:0 16px}
+    .chat{display:flex;flex-direction:column;gap:14px}
+    .msg{display:flex;gap:12px;align-items:flex-start}
+    .msg .avatar{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;background:#1a222e;color:#fff;font-weight:700}
+    .bubble{background:var(--panel);border:1px solid #1b2330;padding:12px 14px;border-radius:var(--radius-sm);max-width:80%;box-shadow:var(--shadow);white-space:pre-wrap}
+    .user .bubble{background:#13212a;border-color:#183341}
+    .assistant .bubble{background:#171b22}
+    .sys{font-size:13px;color:var(--muted)} .muted{color:var(--muted)}
+    .progress{height:8px;background:#0f1318;border:1px solid #1b2330;border-radius:999px;overflow:hidden}
+    .progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+    .progress-info{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+    .progress-info .pill{background:#0f1318;border:1px solid #283245}
+    footer{position:sticky;bottom:0;background:linear-gradient(to top,rgba(11,13,16,.96),rgba(11,13,16,.65));border-top:1px solid #1b2330}
+    .composer{max-width:980px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:flex-end}
+    textarea{flex:1;background:#0f1318;border:1px solid #283245;color:#eef2ff;border-radius:14px;min-height:54px;max-height:180px;padding:12px 14px;outline:none;resize:vertical}
+    .hint{font-size:12px;color:var(--muted);text-align:center;margin:8px 0}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:#0f1318;border:1px solid #283245;font-size:12px;color:#d2daf0}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .hidden{display:none}.blink{animation:blink 1.1s infinite}
+    @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}} a, a:visited{color:#93c5fd}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="bar">
+      <div class="logo">
+        <div class="logo-badge"><span>Ç</span></div>
+        <div>
+          <h1>Çöçi AI</h1>
+          <div class="sys">Sunucusuz • %100 ücretsiz • Tarayıcıda çalışır</div>
+        </div>
+      </div>
+      <div class="grow"></div>
+      <div class="row">
+        <label class="pill">
+          <span>Model:</span>
+          <select id="model">
+            <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama 3.2 1B (hızlı)</option>
+            <option value="Llama-3.2-3B-Instruct-q4f32_1-MLC">Llama 3.2 3B (daha iyi)</option>
+          </select>
+        </label>
+        <button id="reset" title="Sohbeti temizle">Yeni Sohbet</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="notice" class="hint">İlk yüklemede model dosyaları tarayıcınıza indirilir ve cihazınızda saklanır. WebGPU destekli bir tarayıcı önerilir (Chrome/Edge, masaüstü).</div>
+    <div id="progress-wrap" class="hidden">
+      <div class="progress" aria-label="Yükleme durumu"><span id="progress-bar"></span></div>
+      <div id="progress-text" class="hint">Model hazırlanıyor…</div>
+      <div class="progress-info">
+        <span id="progress-percent" class="pill">%0</span>
+        <span id="progress-mb" class="pill">0 MB</span>
+        <span id="progress-elapsed" class="pill">0 sn</span>
+        <span id="progress-eta" class="pill">ETA: —</span>
+      </div>
+    </div>
+    <div id="chat" class="chat" aria-live="polite"></div>
+  </main>
+
+  <footer>
+    <div class="composer">
+      <textarea id="input" placeholder="Çöçi AI'a yaz…  (Enter: gönder, Shift+Enter: satır)" autocomplete="off"></textarea>
+      <button id="send" class="primary" type="button">Gönder</button>
+    </div>
+  </footer>
+</div>
+
+<script type="module">
+// Çöçi AI — GitHub Pages uyumlu, WebLLM tabanlı, tek dosya (optimize edilmiş)
+(function(){
+  const $ = (s) => document.querySelector(s);
+  const chatEl = $('#chat');
+  const inputEl = $('#input');
+  const sendBtn = $('#send');
+  const resetBtn = $('#reset');
+  const modelSel = $('#model');
+  const pWrap = $('#progress-wrap');
+  const pBar = $('#progress-bar');
+  const pText = $('#progress-text');
+  const pPercent = $('#progress-percent');
+  const pMb = $('#progress-mb');
+  const pElapsed = $('#progress-elapsed');
+  const pEta = $('#progress-eta');
+  const notice = $('#notice');
+
+  let engine = null;
+  let CreateMLCEngine = null;
+  let initializing = null; // çifte init'i engelle
+  let busy = false;
+
+  // Yükleme hızı/ETA için takip
+  let startTime = 0, lastT = 0, lastR = 0, emaRate = 0; // 0..1/sn
+
+  // Sistem yönergesi (daha tutarlı ve kısa yanıtlar)
+  let messages = [
+    { role: 'system', content: [
+        'Adın Çöçi AI. Her zaman TÜRKÇE yanıt ver.',
+        'Kısa, net ve doğru yanıt ver; 3-6 cümleyi geçme.',
+        'Bilmiyorsan "Bilmiyorum." de; uydurma yapma.',
+        'Kod istenirse doğrudan çalışan, eksiksiz örnek ver.'
+      ].join(' ') }
+  ];
+
+  // Bağlantı testi — CORS/GET ile doğru sonuç
+  async function connectivitySelfTest(){
+    const tests = [
+      { name: "jsDelivr", url: "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm" },
+      { name: "esm.run",  url: "https://esm.run/@mlc-ai/web-llm" },
+      { name: "unpkg",    url: "https://unpkg.com/@mlc-ai/web-llm/dist/index.js" },
+      { name: "HuggingFace", url: "https://huggingface.co/robots.txt" }
+    ];
+    const results = [];
+    for (const t of tests){
+      try {
+        const r = await fetch(t.url, { method: "GET", mode: "cors" });
+        results.push(`${t.name}: ${r.ok ? "OK" : "HTTP "+r.status}`);
+      } catch (e){
+        results.push(`${t.name}: BLOKLU`);
+      }
+    }
+    console.log("Bağlantı testi →", results.join(" | "));
+  }
+  connectivitySelfTest();
+
+  // Kalıcı model seçimi (varsayılan 1B)
+  modelSel.value = localStorage.getItem('cochi_model') || 'Llama-3.2-1B-Instruct-q4f32_1-MLC';
+
+  function support(){
+    const secure = window.isSecureContext || location.protocol.startsWith('https') || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const gpu = !!navigator.gpu;
+    return {ok: secure && gpu, secure, gpu};
+  }
+
+  function addMsg(role, content){
+    const wrap = document.createElement('div');
+    wrap.className = `msg ${role}`;
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? '👤' : (role === 'assistant' ? '🤖' : 'ℹ️');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = content;
+    wrap.appendChild(avatar);wrap.appendChild(bubble);
+    chatEl.appendChild(wrap);
+    chatEl.scrollTo({top: chatEl.scrollHeight, behavior: 'smooth'});
+    return bubble;
+  }
+
+  function fmtETA(sec){ if(!isFinite(sec) || sec<=0) return '—'; const m=Math.floor(sec/60); const s=Math.round(sec%60); return m?`${m} dk ${s} sn`:`${s} sn`; }
+
+  function setProgress(show, ratio=0, text=''){
+    pWrap.classList.toggle('hidden', !show);
+    if(show){
+      const now = performance.now();
+      if(!startTime){ startTime = now; lastT=now; lastR=ratio; }
+      const elapsed = Math.floor((now-startTime)/1000);
+      const dt = Math.max(0.001, (now-lastT)/1000);
+      const dr = Math.max(0, ratio-lastR);
+      const instRate = dr/dt; // 0..1/sn
+      emaRate = emaRate ? (emaRate*0.8 + instRate*0.2) : instRate;
+      lastT = now; lastR = ratio;
+      const remain = Math.max(0, 1-ratio);
+      const eta = emaRate>0 ? remain/emaRate : Infinity;
+      const total = modelSel.value.includes('1B') ? 550 : 1500; // MB (tahmini toplam)
+      const loadedMB = ratio * total;
+
+      pBar.style.width = Math.round(ratio*100)+'%';
+      pText.textContent = text || 'Model yükleniyor…';
+      pPercent.textContent = `%${Math.round(ratio*100)}`;
+      pMb.textContent = `${loadedMB.toFixed(0)} MB / ${total} MB`;
+      pElapsed.textContent = `${elapsed} sn`;
+      pEta.textContent = `ETA: ${fmtETA(eta)}`;
+    } else {
+      startTime = 0; lastT = 0; lastR = 0; emaRate = 0;
+    }
+  }
+
+  async function loadLib(){
+    if (CreateMLCEngine) return;
+    const urls = [
+      'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm',
+      'https://esm.run/@mlc-ai/web-llm',
+      'https://unpkg.com/@mlc-ai/web-llm/dist/index.js'
+    ];
+    let lastErr = null;
+    for (const u of urls){
+      try { const mod = await import(u); CreateMLCEngine = mod.CreateMLCEngine || mod.default?.CreateMLCEngine; if (CreateMLCEngine) return; }
+      catch(e){ lastErr = e; console.warn('CDN denemesi başarısız:', u, e); }
+    }
+    throw lastErr || new Error('WebLLM yüklenemedi');
+  }
+
+  async function initEngine(){
+    if (engine) return;
+    const s = support();
+    if (!s.ok){
+      notice.style.display = 'block';
+      let why = !s.secure ? 'Bu sayfayı https veya localhost üzerinden aç.' : '';
+      if (!s.gpu) why += (why?' ':'') + 'Tarayıcında WebGPU yok/kapalı. Güncel masaüstü Chrome/Edge kullan.';
+      notice.innerHTML = 'Çalışması için: ' + why;
+      throw new Error('Destek yok');
+    }
+
+    setProgress(true, 0, 'Model hazırlanıyor…');
+    notice.style.display = 'none';
+
+    await loadLib();
+
+    // (İsteğe bağlı) Mevcut modelleri logla
+    try {
+      const mod = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm');
+      console.log('Kullanılabilir modeller:', mod?.prebuiltAppConfig?.model_list?.map(m => m.model_id) || []);
+    } catch {}
+
+    const model = modelSel.value;
+    localStorage.setItem('cochi_model', model);
+
+    engine = await CreateMLCEngine(
+      model, // string model ID
+      {
+        initProgressCallback: (p) => {
+          const r = Number(p?.progress || 0);
+          const t = p?.text || 'İndiriliyor…';
+          setProgress(true, r, t);
+          sendBtn.disabled = r < 1;
+          sendBtn.textContent = r < 1 ? `İndiriliyor %${Math.round(r*100)}` : 'Gönder';
+          if (r >= 1) setTimeout(() => setProgress(false), 350);
+        }
+      }
+    );
+    // Model hazır
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Gönder';
+  }
+
+  async function ensureEngine(){
+    if (engine) return;
+    if (!initializing) initializing = initEngine().finally(() => { initializing = null; });
+    await initializing;
+  }
+
+  async function send(){
+    if (busy) return;
+    let text = inputEl.value.trim();
+    if (!text) return;
+
+    // Çok uzun girdi → son 1500 karakter
+    if (text.length > 1500) text = text.slice(-1500);
+
+    busy = true; inputEl.value='';
+    addMsg('user', text);
+    const bot = addMsg('assistant', '…'); bot.classList.add('blink');
+
+    messages.push({ role:'user', content:text });
+    try{
+      await ensureEngine();
+      let final = '';
+      const hist = messages.slice(-12); // son 12 mesajla sınırlama
+      const stream = await engine.chat.completions.create({
+        stream: true,
+        messages: hist,
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: 256
+      });
+      bot.textContent='';
+      for await (const part of stream){
+        const delta = part?.choices?.[0]?.delta?.content || '';
+        if (delta){ final += delta; bot.textContent = final; chatEl.scrollTo({top:chatEl.scrollHeight}); }
+      }
+      messages.push({ role:'assistant', content: final || '🤖' });
+    }catch(err){
+      console.error('Çöçi hata:', err);
+      const s = support();
+      let hint = 'Bir sorun oluştu.';
+      if (!s.secure) hint += ' Bu sayfayı https veya localhost üzerinden aç.';
+      if (!s.gpu) hint += ' WebGPU yok/kapalı. Güncel Chrome/Edge (masaüstü) kullan.';
+      if (String(err).includes('Failed to fetch dynamically imported module')) hint += ' Ağ/CDN modülü yüklenemedi. Ctrl+F5 ile yenile veya farklı ağ dene.';
+      if (String(err).includes('Out of memory')) hint += ' Bellek yetersiz. Modeli 1B seç.';
+      bot.textContent = hint;
+    }finally{
+      bot.classList.remove('blink'); busy=false; inputEl.focus();
+    }
+  }
+
+  // Olaylar
+  sendBtn.addEventListener('click', send);
+  inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
+  resetBtn.addEventListener('click', ()=>{ messages = messages.slice(0,1); chatEl.innerHTML=''; addMsg('assistant','Yeni sohbete hazırım. Ne sormak istersin?'); });
+  modelSel.addEventListener('change', async ()=>{
+    const want = modelSel.value; localStorage.setItem('cochi_model', want);
+    engine=null; setProgress(true, 0, 'Model değiştiriliyor…');
+    try{ await ensureEngine(); }catch(_){}
+    addMsg('assistant', `Model değişti: ${modelSel.options[modelSel.selectedIndex].text}.`);
+  });
+
+  // Hoş geldin
+  const s = support();
+  if (!s.ok){ notice.innerHTML = '💡 Çalışması için <b>https veya localhost</b> ve <b>WebGPU destekli tarayıcı</b> gerekir (Chrome/Edge – masaüstü).'; }
+  addMsg('assistant', 'Merhaba! Ben Çöçi AI. Tamamen ücretsizim ve tarayıcında çalışıyorum. Bana istediğini sorabilirsin.');
+})();
+</script>
+</body>
+</html>
